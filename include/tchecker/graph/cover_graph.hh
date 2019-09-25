@@ -499,11 +499,11 @@ namespace tchecker {
         inline bool is_le(NODE_PTR const & node1, NODE_PTR const & node2) const{
           return _le_node(node1, node2);
         }
-      private:
+        
+      protected:
         inline node_position_t get_node_position(NODE_PTR const & n) const {
           return _node_to_key(n) % _nodes.size();
         }
-      protected:
         tchecker::graph::cover::node_to_key_t<KEY, NODE_PTR> _node_to_key;  /*!< a node-to-key map */
         tchecker::graph::cover::node_binary_predicate_t<NODE_PTR> _le_node; /*!< less-or-equal relation on node pointers */
         nodes_map_t _nodes;                                                 /*!< map : key -> nodes with that key */

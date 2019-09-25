@@ -70,7 +70,7 @@ namespace tchecker {
       ++ _covered_nonleaf_nodes;
     }
     
-    void stats_t::increment_directly_covered_nonleaf_nodes()
+    void stats_t::increment_directly_covered_leaf_nodes()
     {
       ++_directly_covered_leaf_nodes;
     }

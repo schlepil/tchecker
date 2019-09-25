@@ -84,7 +84,20 @@ namespace tchecker {
         AM_G,
         AM_L,
       };
-      
+  
+      /*!
+       \brief Constructor
+        Default value constructor
+       */
+       options_t():_node_covering(INCLUSION),
+                   _output_format(tchecker::covreach::options_t::RAW),
+                   _algorithm_model(tchecker::covreach::options_t::UNKNOWN),
+                   _os(&std::cout),
+                   _search_order(tchecker::covreach::options_t::DFS),
+                   _block_size(10000),
+                   _nodes_table_size(65536),
+                   _stats(0)
+      {}
       /*!
        \brief Constructor
        \tparam MAP_ITERATOR : iterator on a map std::string -> std::string,

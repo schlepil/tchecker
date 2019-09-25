@@ -720,6 +720,14 @@ namespace tchecker {
       inline bool is_le(node_ptr_t const & node1, node_ptr_t const & node2) const{
         return tchecker::graph::cover::graph_t<node_ptr_t, key_t>::is_le(node1, node2);
       }
+
+    protected:
+      using node_position_t = tchecker::graph::cover::node_position_t;
+      
+      inline node_position_t get_node_position(node_ptr_t const & n){
+        return tchecker::graph::cover::graph_t<node_ptr_t, key_t>::get_node_position(n);
+      }
+      
     private:
       /*!
        \brief Connection predicate

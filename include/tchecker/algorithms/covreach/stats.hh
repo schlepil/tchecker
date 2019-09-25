@@ -9,6 +9,7 @@
 #define TCHECKER_ALGORITHMS_COVREACH_STATS_HH
 
 #include <iostream>
+#include <vector>
 
 /*!
  \file stats.hh
@@ -29,6 +30,26 @@ namespace tchecker {
        \brief Constructor
        */
       stats_t();
+      
+      stats_t(unsigned long visited, unsigned long covered_leaves, unsigned long covered_nonleaves, unsigned long direcly_covered):
+        _visited_nodes(visited),
+        _covered_leaf_nodes(covered_leaves),
+        _covered_nonleaf_nodes(covered_nonleaves),
+      _directly_covered_leaf_nodes(direcly_covered)
+      {}
+      
+      stats_t(const std::vector<tchecker::covreach::stats_t> & stats_vec){
+        _visited_nodes=0;
+        _covered_leaf_nodes=0;
+        _covered_nonleaf_nodes=0;
+        _directly_covered_leaf_nodes=0;
+        for (const tchecker::covreach::stats_t & it : stats_vec){
+          _visited_nodes += it.visited_nodes();
+          _directly_covered_leaf_nodes += it.directly_covered_leaf_nodes();
+          _covered_leaf_nodes += it.covered_leaf_nodes();
+          _covered_nonleaf_nodes += it.covered_nonleaf_nodes();
+        }
+      }
       
       /*!
        \brief Copy constructor
@@ -101,7 +122,7 @@ namespace tchecker {
        \brief Increment counter of covered leaf nodes within the same successors
        \post the number of covered non-leaf nodes has increased by 1
        */
-      void increment_directly_covered_nonleaf_nodes();
+      void increment_directly_covered_leaf_nodes();
       
     private:
       unsigned long _visited_nodes;          /*!< Number of visited nodes */

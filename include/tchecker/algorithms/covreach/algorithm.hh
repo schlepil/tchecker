@@ -115,7 +115,7 @@ namespace tchecker {
           for (node_ptr_t & next_node : nodes) {
             if (!next_node->is_active()){   // covered by another node in next_nodes
               // Do not add edges do not add to graph
-              stats.increment_directly_covered_nonleaf_nodes();
+              stats.increment_directly_covered_leaf_nodes();
               continue; // ptr is released when nodes is cleared later collected by GC
             }
             
@@ -138,9 +138,9 @@ namespace tchecker {
             covered_nodes.clear();
             graph.covered_nodes(next_node, covered_nodes_inserter);
             for (node_ptr_t & covered_node : covered_nodes) {
-              waiting.remove(covered_node);
+              waiting.remove(covered_node); //#1
               cover_node(covered_node, next_node, graph);
-              covered_node->make_inactive();
+              //covered_node->make_inactive(); // Redundant with #1
               stats.increment_covered_nonleaf_nodes();
             }
           }

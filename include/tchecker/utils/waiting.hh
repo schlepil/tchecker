@@ -264,7 +264,8 @@ namespace tchecker {
      */
     void remove_first()
     {
-      skip_bad();
+      //skip_bad();
+      assert(_filter(W::first())); // When this is called all bad should have already been removed;
       assert(! empty());
       W::remove_first();
     }
