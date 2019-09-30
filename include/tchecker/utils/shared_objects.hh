@@ -190,7 +190,7 @@ namespace tchecker {
      \brief Accessor
      \return The value of the reference counter
      */
-    inline std::size_t refcount(void) const
+    inline constexpr std::size_t refcount(void) const
     {
       return *( refcount_addr() );
     }
@@ -492,7 +492,7 @@ namespace tchecker {
      \brief Accessor
      \return internal pointer
      */
-    inline T * ptr() const
+    inline constexpr T * ptr() const
     {
       return _t;
     }
@@ -503,7 +503,7 @@ namespace tchecker {
      \pre this object hold a non nullptr pointer (checked by assertion)
      \throw std::runtime_error : when this object holds a nullptr pointer
      */
-    inline T & operator* () const
+    inline constexpr T & operator* () const
     {
       assert( _t != nullptr );
       return *_t;
@@ -514,7 +514,7 @@ namespace tchecker {
      \return internal pointer
      \pre this object hold a non nullptr pointer (checked by assertion)
      */
-    inline T * operator-> () const
+    inline constexpr T * operator-> () const
     {
       assert( _t != nullptr );
       return _t;
