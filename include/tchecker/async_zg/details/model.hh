@@ -50,7 +50,7 @@ namespace tchecker {
         _offset_dimension(model._offset_dimension),
         _refcount(model._refcount),
         _refmap(nullptr),
-        _offset_clock_index(model._clock_index)
+        _offset_clock_index(model._offset_clock_index)
         {
           _refmap = new tchecker::clock_id_t[_offset_dimension];
           std::memcpy(_refmap, model._refmap, _offset_dimension * sizeof(*_refmap));

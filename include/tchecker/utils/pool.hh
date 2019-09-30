@@ -286,6 +286,7 @@ namespace tchecker {
     void free_all()
     {
       void * p = _block_head, * tmp = nullptr;
+      _free_head_lock.lock(); //schlepil
       while (p != nullptr) {
         tmp = p;
         p = nextblock(p);
@@ -296,6 +297,7 @@ namespace tchecker {
       _block_head = nullptr;
       _raw_head = nullptr;
       _raw_end = nullptr;
+      _free_head_lock.unlock(); //schlepil
     }
     
     /*!
@@ -373,7 +375,7 @@ namespace tchecker {
         _free_head_lock.unlock();
         return chunk;
       }
-      _free_head_lock.unlock();
+      //_free_head_lock.unlock();
       
       // Allocate a new block if no chunk available
       if (_raw_head == _raw_end) {
@@ -393,6 +395,8 @@ namespace tchecker {
       typename T::refcount_t * chunk = reinterpret_cast<typename T::refcount_t *>(_raw_head);
       *chunk = ALLOCATED_CHUNK;  // protect the chunk from GC
       _raw_head += _alloc_size;
+  
+      _free_head_lock.unlock(); // Thread safe for multiple allocating threads
       
       return chunk;
     }

@@ -443,10 +443,14 @@ namespace tchecker {
         void covered_nodes(NODE_PTR const & n, INSERTER & ins) const
         {
           assert(n->position_in_table() < _nodes.size());
+          assert(n->is_active());
           auto const & container = _nodes[n->position_in_table()];
-          for (NODE_PTR const & node : container)
-            if (_le_node(node, n))
+          for (NODE_PTR const & node : container) {
+            assert(node->is_active());
+            if (_le_node(node, n)) {
               ins = node;
+            }
+          }
         }
         
         /*!

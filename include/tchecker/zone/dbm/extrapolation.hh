@@ -429,7 +429,7 @@ namespace tchecker {
           _U[i] = e._U[i];
         }
       }
-      
+
       /*!
        \brief Move constructor
        \param e : local LU extrapolation
@@ -515,7 +515,6 @@ namespace tchecker {
       tchecker::clockbounds::map_t * _L;                                                  /*!< L Map */
       tchecker::clockbounds::map_t * _U;                                                  /*!< U Map */
     };
-    
     
     // Instances
     

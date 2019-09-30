@@ -1,4 +1,4 @@
-TChecker is a verification tool for timed automata and a plateform for testing new algorithms. It implements several verification algorithms that can be launched from the command line. This document describes how to invoke the algorithms using the command line tool.
+eTChecker is a verification tool for timed automata and a plateform for testing new algorithms. It implements several verification algorithms that can be launched from the command line. This document describes how to invoke the algorithms using the command line tool.
 
 Simply launching the command line tool:
 

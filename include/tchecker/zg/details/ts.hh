@@ -65,7 +65,9 @@ namespace tchecker {
          \param ts : ZG transition system
          \post ts has been moved to this
          */
-        ts_t(tchecker::zg::details::ts_t<STATE, TRANSITION, ZG> && ts) = default;
+//        ts_t(tchecker::zg::details::ts_t<STATE, TRANSITION, ZG> && ts) = default;
+        ts_t(tchecker::zg::details::ts_t<STATE, TRANSITION, ZG> && ts) = delete; //schlepil
+        ts_t& operator=(ts_t && other) = delete; //schlepil
         
         /*!
          \brief Destructor
@@ -87,8 +89,9 @@ namespace tchecker {
          \post ts has been moved to this
          \return this after assignment
          */
-        tchecker::zg::details::ts_t<STATE, TRANSITION, ZG> &
-        operator= (tchecker::zg::details::ts_t<STATE, TRANSITION, ZG> && ts) = default;
+         //schlepil
+//        tchecker::zg::details::ts_t<STATE, TRANSITION, ZG> &
+//        operator= (tchecker::zg::details::ts_t<STATE, TRANSITION, ZG> && ts) = default;
         
         /*!
          \brief Accessor (see tchecker::ts::ts_t::initial)

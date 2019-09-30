@@ -162,10 +162,12 @@ namespace tchecker {
     inline void take_reference(void) const
     {
       refcount_t * refcount = refcount_addr();
-      if (*refcount == REFCOUNT_MAX)  // allocated object with no reference yet
+      if (*refcount == REFCOUNT_MAX) {  // allocated object with no reference yet
         *refcount = 1;                // first reference to this object
-      else
+      }else {
+        assert(*refcount < 10000);
         *refcount += 1;
+      }
       if (*refcount == REFCOUNT_MAX)  // overflow
         throw std::overflow_error("reference counter overflow");
     }
