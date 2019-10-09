@@ -59,6 +59,33 @@ namespace tchecker {
        dbm is tight
        */
       void reset(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_reset_container_t const & resets);
+  
+      /*!
+       \brief Constructs a zone corresponding to the clock constraints
+       \param dbm : a DBM
+       \param dim : dimension of dbm
+       \param resets : container of clock resets
+       \pre : tight
+       dbm is a dim*dim array of difference bounds
+       every clock in resets belongs to 0..dim-1.
+       \post dbm is the intersection with all resets
+       \result true if non-empty
+       */
+      enum tchecker::state_status_t constrain_to_reset(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_reset_container_t const & resets);
+  
+      /*!
+       \brief Perform the reverse action of reset on a zone
+       \param dbm : a DBM
+       \param dim : dimension of dbm
+       \param resets : container of clock resets
+       \pre : tight
+       dbm is a dim*dim array of difference bounds
+       every clock in resets belongs to 0..dim-1.
+       Currently only resets of the type x := v
+       \post dbm is "opened-down" for the clocks involved in the reset
+       */
+      //void inverse_reset(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x, tchecker::clock_id_t y, tchecker::dbm::db_t value=0);
+      void inverse_reset(tchecker::dbm::db_t *dbm, tchecker::clock_id_t  dim, tchecker::clock_reset_container_t const & resets);
       
     } // end of namespace details
     
@@ -209,7 +236,81 @@ namespace tchecker {
         
         return tchecker::STATE_OK;
       }
-    };
+  
+      // #schlepil
+      /*!
+        \brief Compute last zone
+        \param zone : a zone
+        \param src_delay_allowed : true if delay allowed in source state
+        \param src_invariant : invariant in source state
+        \param guard : transition guard
+        \param clkreset : transition reset
+        \param tgt_delay_allowed : true if delay allowed in target state
+        \param tgt_invariant : invariant in target state
+        \param tgt_vloc : tuple of locations in target state
+        \pre zone is not empty
+        zone is tight
+        \post zone has been updated to:
+        ATTENTION delay here means that the zone is opened down
+        delay_source( clkreset^-1((( zone \cap clkreset) \cap guard )) )
+        todo target delay?!
+        then extrapolated w.r.t.
+        clock bounds in tgt_vloc
+        \return STATE_OK if the resulting zone is not empty, STATE_CLOCKS_GUARD_VIOLATED
+        if guard does not hold in zone, and STATE_CLOCKS_TGT_INVARIANT_VIOLATED does not
+        hold in (zone \cap guatd)[clkreset] or in delay((zone \cap guard)[clkreset])
+        */
+      template <class VLOC>
+      enum tchecker::state_status_t last(tchecker::dbm::zone_t & zone,
+                                         bool src_delay_allowed,
+                                         tchecker::clock_constraint_container_t const & src_invariant,
+                                         tchecker::clock_constraint_container_t const & guard,
+                                         tchecker::clock_reset_container_t const & clkreset,
+                                         bool tgt_delay_allowed,
+                                         tchecker::clock_constraint_container_t const & tgt_invariant,
+                                         VLOC const & tgt_vloc)
+      {
+        tchecker::dbm::db_t * dbm = zone.dbm();
+        auto dim = zone.dim();
+        tchecker::state_status_t status;
+        
+        // This computes: zone \cap clkreset
+        status = tchecker::dbm::details::constrain_to_reset(dbm, dim, clkreset);
+        if (status != tchecker::STATE_OK) {
+          return status;
+        }
+      
+        // Now compute the inverse reset;
+        // Currently only resets of the type x := v.
+        // todo compute inverse of x := y + v
+        tchecker::dbm::details::inverse_reset(dbm, dim, clkreset);
+      
+        tchecker::dbm::details::reset(dbm, dim, clkreset);
+        
+        // Intersect with guards <-> constrain to guards
+        if ( ! tchecker::dbm::details::constrain(dbm, dim, guard) )
+          return tchecker::STATE_CLOCKS_GUARD_VIOLATED;
+        
+        //Intersect with the invariants <-> constrain to invariants
+        if ( ! tchecker::dbm::details::constrain(dbm, dim, src_invariant) )
+          return tchecker::STATE_CLOCKS_TGT_INVARIANT_VIOLATED;
+      
+        // If src delay is allowed, we do not only consider the minimal reachable zone
+        // but also all time-points that could have simply waited in this state
+        // in order to take the transition
+        if (src_delay_allowed) {
+          tchecker::dbm::open_down(dbm, dim);
+        
+          if ( ! tchecker::dbm::details::constrain(dbm, dim, src_invariant) )
+            assert (0); // opening down should enlarge the set, as the original set respected the invariants it should be impossible that this zone is empty
+            return tchecker::STATE_CLOCKS_TGT_INVARIANT_VIOLATED;
+        }
+      
+        EXTRAPOLATION::extrapolate(dbm, dim, tgt_vloc);
+      
+        return tchecker::STATE_OK;
+      }
+  };
     
     
     

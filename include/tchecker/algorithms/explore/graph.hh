@@ -33,6 +33,7 @@ namespace tchecker {
     template <class STATE>
     class node_t : public tchecker::graph::node_with_id_t, public STATE {
     public:
+      using state_t = STATE;
       /*!
        \brief Constructor
        \param id : node identifier

@@ -187,6 +187,19 @@ namespace tchecker {
        */
       static std::ostream & describe(std::ostream & os);
     protected:
+  
+      /*!
+       \brief Constructor
+       \note Empty constructor when used as base class
+       */
+      options_t()
+          : _output_format(tchecker::explore::options_t::RAW),
+            _explored_model(tchecker::explore::options_t::UNKNOWN),
+            _os(&std::cout),
+            _search_order(tchecker::explore::options_t::DFS),
+            _block_size(10000)
+      {}
+      
       /*!
        \brief Set option
        \param key : option key

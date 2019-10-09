@@ -509,9 +509,6 @@ namespace tchecker {
     return h;
   }
   
-  
-  
-  
   /*!
    \brief Output operator for arrays
    \param os : output stream

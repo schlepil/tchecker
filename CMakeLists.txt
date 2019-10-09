@@ -6,7 +6,11 @@ cmake_minimum_required(VERSION 2.8)
 project(tchecker LANGUAGES CXX)
 
 include("${CMAKE_SOURCE_DIR}/cmake/CheckCompilerFlags.cmake")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmax-errors=10")
+#-gcc
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmax-errors=10")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCMAKE_CXX_COMPILER=clang++-8 -fPIC")
+
 
 # The project version number.
 set(VERSION_MAJOR   0   CACHE STRING "Project major version number.")

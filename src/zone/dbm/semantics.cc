@@ -31,6 +31,34 @@ namespace tchecker {
         for (tchecker::clock_reset_t const & r : resets)
           tchecker::dbm::reset(dbm, dim, r.left_id(), r.right_id(), r.value());
       }
+  
+      enum tchecker::state_status_t constrain_to_reset(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_reset_container_t const & resets)
+      {
+        // dbm \cap resets
+        // resets of the form x=y+c become constraints of the form y+c<=x<=y+c
+        // x-y <= c
+        //y-x <= -c
+        tchecker::dbm::status_t res;
+        for (tchecker::clock_reset_t const & r : resets) {
+          res = tchecker::dbm::constrain(dbm, dim, r.left_id(), r.right_id(), tchecker::dbm::LE,  r.value());
+          if (!(tchecker::dbm::NON_EMPTY == res)){
+            return tchecker::STATE_EMPTY_ZONE;
+          }
+          res = tchecker::dbm::constrain(dbm, dim, r.right_id(), r.left_id(), tchecker::dbm::LE, -r.value());
+          if (!(tchecker::dbm::NON_EMPTY == res)){
+            return tchecker::STATE_EMPTY_ZONE;
+          }
+        }
+        return tchecker::STATE_OK;
+      }
+  
+      void inverse_reset(tchecker::dbm::db_t *dbm, tchecker::clock_id_t  dim, tchecker::clock_reset_container_t const & resets)
+      {
+        for (tchecker::clock_reset_t const & r : resets)
+          tchecker::dbm::inverse_reset(dbm, dim, r.left_id(), r.right_id(), r.value());
+        return;
+      }
+      
       
     } // end of namespace details
     

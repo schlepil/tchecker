@@ -176,6 +176,29 @@ namespace tchecker {
      \note Applies Floyd-Warshall algorithm on dbm seen as a weighted graph.
      */
     enum tchecker::dbm::status_t tighten(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim);
+  
+    /*!
+     \brief Partially tighten a DBM
+     \param dbm : a DBM
+     \param dim : dimension of dbm
+     \param x : the clock index to be tightened
+     \pre dbm is not nullptr (checked by assertion)
+     dbm is a dim*dim array of difference bounds
+     dim >= 1 (checked by assertion)
+     dbm is consistent (checked by assertion)
+     0<x<dim holds
+     \post dbm is not nullptr (checked by assertion)
+     dbm is tight if it is not empty.
+     if dbm is empty, then the difference bound in (0,0) is less-than <=0 (tchecker::dbm::is_empty_0() returns true)
+     \return EMPTY if dbm is empty, MAYBE_EMPTY otherwise
+     \note Applies Floyd-Warshall to some clocks.
+      Algorithm:
+       for all i < dim do
+         for all j < dim do
+           if dbm[i,j] > dbm[i,k]+dbm[k,j]
+             dbm[i,j] = dbm[i,k]+dbm[k,j]
+     */
+    enum tchecker::dbm::status_t tighten1(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, const tchecker::clock_id_t k);
     
     /*!
      \brief Tighten a DBM w.r.t. a constraint
@@ -199,6 +222,29 @@ namespace tchecker {
      */
     enum tchecker::dbm::status_t tighten(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x,
                                          tchecker::clock_id_t y);
+  
+  
+    /*!
+     \brief Tighten a constraint with respect to a DBM
+     \param dbm : a DBM
+     \param dim : dimension of dbm
+     \param x : first clock
+     \param y : second clock
+     \pre dbm is not nullptr (checked by assertion)
+     dbm is a dim*dim array of difference bounds
+     dim >= 1 (checked by assertion)
+     dbm is consistent (checked by assertion)
+     0 <= x < dim (checked by assertion)
+     0 <= y < dim (checked by assertion)
+     x != y (checked by assertion)
+     \post the edge x->y is tight with respect to all clocks u. That is, the length of the path x->y
+     is at most the length of the path x->v->y.
+     if dbm is empty, then the difference bound in (0,0) is less-than <=0 (tchecker::dbm::is_empty_0() returns true)
+     \return EMPTY if dbm is empty, MAY_BE_EMPTY otherwise
+     */
+    enum tchecker::dbm::status_t tighten_xy(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x,
+                                         tchecker::clock_id_t y);
+    
     
     /*!
      \brief Constrain a DBM
@@ -343,7 +389,38 @@ namespace tchecker {
      */
     void reset_to_sum(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x, tchecker::clock_id_t y,
                       tchecker::dbm::db_t value);
-    
+  
+    /*!
+     \brief inverse reset of x := y+v
+     \param dbm : a dbm
+     \param dim : dimension of dbm
+     \param x : clock_id_t of the clock to inverse reset
+     \param y : clock_id_t of the clock to inverse reset
+     \param value : Is currently unused
+     \pre dbm is not nullptr (checked by assertion)
+     dbm is a dim*dim array of difference bounds
+     dbm is consistent (checked by assertion)
+     dbm is tight (checked by assertion)
+     dim >= 1 (checked by assertion).
+     */
+    void inverse_reset(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x, tchecker::clock_id_t y, tchecker::dbm::db_t value=0);
+  
+    /*!
+     \brief inverse reset to value so x := value, so left clock is 0, value is unused
+     \param dbm : a dbm
+     \param dim : dimension of dbm
+     \param x : clock_id_t of the clock to inverse reset
+     \pre dbm is not nullptr (checked by assertion)
+     dbm is a dim*dim array of difference bounds
+     dbm is consistent (checked by assertion)
+     dbm is tight (checked by assertion)
+     dim >= 1 (checked by assertion).
+     \post all lower / upper bounds on the clock with id in dbm are >-infinity / <infinity.
+     dbm is tight.
+     */
+    void inverse_reset_value(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x);
+  
+  
     /*!
      \brief Open up (delay)
      \param dbm : a dbm
@@ -357,6 +434,20 @@ namespace tchecker {
      dbm is tight.
      */
     void open_up(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim);
+  
+    /*!
+     \brief Open down (inverse delay)
+     \param dbm : a dbm
+     \param dim : dimension of dbm
+     \pre dbm is not nullptr (checked by assertion)
+     dbm is a dim*dim array of difference bounds
+     dbm is consistent (checked by assertion)
+     dbm is tight (checked by assertion)
+     dim >= 1 (checked by assertion).
+     \post all lower bounds on clocks in dbm are <infinity.
+     dbm is tight.
+     */
+    void open_down(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim);
     
     /*!
      \brief Intersection

@@ -176,6 +176,30 @@ namespace tchecker {
       return tchecker::dbm::NON_EMPTY;
     }
     
+    enum tchecker::dbm::status_t tighten1(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, const tchecker::clock_id_t k){
+      assert(dbm != nullptr);
+      assert(dim >= 1);
+      assert(tchecker::dbm::is_consistent(dbm, dim));
+      assert((0<k) && (k<dim));
+      
+      for (tchecker::clock_id_t i=0; i<dim; ++i){
+        if ((i==k) || (DBM(i,k) == tchecker::dbm::LT_INFINITY)){
+          // All transitions are tight with respect to infinity
+          continue;
+        }
+        for (tchecker::clock_id_t j=0; j<dim; ++j) {
+          if (DBM(k,j)==tchecker::dbm::LT_INFINITY){
+            continue;
+          }
+          DBM(i,j) = tchecker::dbm::min(DBM(i,j), tchecker::dbm::sum(DBM(i,k), DBM(k,j)));
+        } // j
+        if (DBM(i,i)<tchecker::dbm::LE_ZERO){
+          return tchecker::dbm::EMPTY;
+        }
+      }// i
+      return tchecker::dbm::MAY_BE_EMPTY;
+    }
+    
     
     enum tchecker::dbm::status_t tighten(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x,
                                          tchecker::clock_id_t y)
@@ -209,6 +233,37 @@ namespace tchecker {
       return tchecker::dbm::MAY_BE_EMPTY;
     }
     
+    enum tchecker::dbm::status_t tighten_xy(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x,
+                                            tchecker::clock_id_t y){
+      assert(dbm != nullptr);
+      assert(dim >= 1);
+      assert(tchecker::dbm::is_consistent(dbm, dim));
+      assert(0<=x<dim);
+      assert(0<=y<dim);
+      assert(x!=y);
+  
+      tchecker::dbm::db_t &M = (x>y) ? DBM(x,y) : DBM(y,x);
+      tchecker::dbm::db_t &L = (x>y) ? DBM(y,x) : DBM(x,y);
+      
+      tchecker::dbm::db_t &db_xy = DBM(x,y);
+      
+      for (tchecker::clock_id_t z=0; z<dim; ++z){
+        if((z==x)||(z==y)){
+          continue;
+        }
+        if((DBM(x,z)==tchecker::dbm::LT_INFINITY) || (DBM(x,z)==tchecker::dbm::LT_INFINITY)){
+          continue;
+        }
+        // Check if smaller
+        db_xy = tchecker::dbm::min(db_xy, tchecker::dbm::sum(DBM(x,z), DBM(z,y)));
+        //Check if not empty
+        if (-L>M){
+          return tchecker::dbm::EMPTY;
+        }
+      }
+      
+      return tchecker::dbm::MAY_BE_EMPTY;
+    }
     
     enum tchecker::dbm::status_t
     constrain(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x, tchecker::clock_id_t y,
@@ -363,6 +418,39 @@ namespace tchecker {
       assert(tchecker::dbm::is_tight(dbm, dim));
     }
     
+    void inverse_reset(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x, tchecker::clock_id_t y, tchecker::dbm::db_t value){
+      
+      assert(y==0); // "diagonal" clock resets not supported yet
+      inverse_reset_value(dbm, dim, x);
+      return;
+    }
+    
+    inline void inverse_reset_value(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim, tchecker::clock_id_t x){
+      assert(dbm != nullptr);
+      assert(dim >= 1);
+      assert(tchecker::dbm::is_consistent(dbm, dim));
+      assert(tchecker::dbm::is_tight(dbm, dim));
+      assert(x < dim);
+      assert(0<x);
+      
+      // opening-down
+      // If all clocks are opened down, the zone would still be tight
+      // With the partial opening this is not the case
+      DBM(0,x) = tchecker::dbm::LT_INFINITY;
+      // making the zone tight again
+      // Note that this function is independent from
+      // the value DBM(x,0) (if x!=0 which is necessary anyways) it is therefore safe the reset and tighten
+      // DBM(0,x) and DBM(x,0) consecutively
+      assert(tchecker::dbm::MAY_BE_EMPTY == tighten_xy(dbm, dim, 0, x));
+  
+      DBM(x,0) = tchecker::dbm::LT_INFINITY;
+      assert(tchecker::dbm::MAY_BE_EMPTY == tighten_xy(dbm, dim, x,0));
+      
+      assert(tchecker::dbm::is_consistent(dbm, dim));
+      assert(tchecker::dbm::is_tight(dbm, dim)); // todo To be removed
+      return;
+    }
+    
     
     void open_up(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim)
     {
@@ -373,6 +461,20 @@ namespace tchecker {
       
       for (tchecker::clock_id_t i = 1; i < dim; ++i)
         DBM(i,0) = tchecker::dbm::LT_INFINITY;
+      
+      assert(tchecker::dbm::is_consistent(dbm, dim));
+      assert(tchecker::dbm::is_tight(dbm, dim));
+    }
+    
+    void open_down(tchecker::dbm::db_t * dbm, tchecker::clock_id_t dim)
+    {
+      assert(dbm != nullptr);
+      assert(dim >= 1);
+      assert(tchecker::dbm::is_consistent(dbm, dim));
+      assert(tchecker::dbm::is_tight(dbm, dim));
+      
+      for (tchecker::clock_id_t i = 1; i < dim; ++i)
+        DBM(0,i) = tchecker::dbm::LT_INFINITY;
       
       assert(tchecker::dbm::is_consistent(dbm, dim));
       assert(tchecker::dbm::is_tight(dbm, dim));

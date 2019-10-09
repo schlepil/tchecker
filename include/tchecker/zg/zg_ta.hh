@@ -57,7 +57,7 @@ namespace tchecker {
         
         //schlepil
         // Is default copy ok?
-        model_t(const model_t & other):tchecker::zg::ta::model_instantiation_t(static_cast<tchecker::zg::ta::model_instantiation_t>(other)){};
+        //model_t(const model_t & other):tchecker::zg::ta::model_instantiation_t(static_cast<tchecker::zg::ta::model_instantiation_t>(other)){};
         
         model_t(model_t && other)=delete;//schlepil
         model_t& operator=(model_t && other)=delete;//schlepil
