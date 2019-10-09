@@ -357,7 +357,7 @@ namespace tchecker {
      \post this object holds a reference to the object pointed by y
      */
     template <class Y>
-    intrusive_shared_ptr_t(tchecker::intrusive_shared_ptr_t<Y> const & y)
+    explicit intrusive_shared_ptr_t(tchecker::intrusive_shared_ptr_t<Y> const & y)
     : _t(nullptr)
     {
       reset(dynamic_cast<T*>(y._t));
@@ -385,7 +385,7 @@ namespace tchecker {
      has been reset to nullptr
      */
     template <class Y>
-    intrusive_shared_ptr_t(tchecker::intrusive_shared_ptr_t<Y> && y)
+    explicit intrusive_shared_ptr_t(tchecker::intrusive_shared_ptr_t<Y> && y)
     : _t(nullptr)
     {
       reset(dynamic_cast<T *>(y._t));
