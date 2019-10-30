@@ -100,7 +100,6 @@ namespace tchecker {
           waiting.remove_first();
           
           stats.increment_visited_nodes();
-          std::cout << "visited " << stats.visited_nodes() << std::endl;
           
           if (accepting(node))
             return std::make_tuple(tchecker::covreach::REACHABLE, stats);
