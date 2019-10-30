@@ -12,4 +12,4 @@
 #include "test-dbm.hh"
 #include "test-guard_weak_sync.hh"
 #include "test-offset_dbm.hh"
-#include "test_resets.hh"
+//#include "test_resets.hh" //todo schlepil
