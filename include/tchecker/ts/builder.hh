@@ -10,6 +10,7 @@
 
 #include <tuple>
 #include <type_traits>
+#include <atomic>
 
 #include "tchecker/basictypes.hh"
 #include "tchecker/utils/iterator.hh"
@@ -101,7 +102,7 @@ namespace tchecker {
       
       /*!
        \brief Compute next state
-       \param state : source state
+       \param state : source state todo check if const is ok, should be
        \param v : outgoing iterator value from the transition system
        \param sargs : parameters to ALLOCATOR::allocate_state()
        \param targs : parameters to ALLOCATOR::allocate_transition()
@@ -112,7 +113,8 @@ namespace tchecker {
        */
       template <class ... SARGS, class ... TARGS>
       std::tuple<state_ptr_t, transition_ptr_t, tchecker::state_status_t>
-      next_state(state_ptr_t & state,
+      //next_state(state_ptr_t & state,
+      next_state(const state_ptr_t & state, //schlepil
                  typename TS::outgoing_edges_iterator_value_t const & v,
                  std::tuple<SARGS...> && sargs,
                  std::tuple<TARGS...> && targs)
@@ -348,10 +350,11 @@ namespace tchecker {
        \param s : a state
        \return range over outgoing (state, transition) of s
        */
-      tchecker::range_t<tchecker::ts::builder_ok_t<TS, ALLOCATOR>::outgoing_iterator_t> outgoing(state_ptr_t & s)
+      //tchecker::range_t<tchecker::ts::builder_ok_t<TS, ALLOCATOR>::outgoing_iterator_t> outgoing(state_ptr_t & s)
+      tchecker::range_t<tchecker::ts::builder_ok_t<TS, ALLOCATOR>::outgoing_iterator_t> outgoing(const state_ptr_t & s) //schlepil todo why not const s?
       {
         auto outgoing_range = tchecker::ts::builder_t<TS, ALLOCATOR>::_ts.outgoing_edges(*s);
-        
+        // schlepil todo check how to circumvent the usage of lambda function; This seems to generate a lot of overhead in my cases
         auto computer = [&] (typename TS::outgoing_edges_iterator_value_t const & v) {
           return tchecker::ts::builder_t<TS, ALLOCATOR>::next_state(s, v, std::make_tuple(), std::make_tuple());
         };

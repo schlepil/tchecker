@@ -135,6 +135,24 @@ namespace tchecker {
     {
       return (_begin == _end);
     }
+  
+    /*!
+     \brief Return the number of elements
+     \return size_t of elements
+     */
+//    todo can this be done more efficiently
+//    todo how can all the other functions be constexpr?!
+    inline size_t size() const
+    {
+      size_t nbr = 0;
+      for (const I & it = _begin; it!=_end; ++it){
+        nbr++;
+      }
+      return nbr;
+    }
+    
+    
+    
   protected:
     I _begin;  /*!< Iterator to first element */
     I _end;    /*!< Past-the-end iterator */

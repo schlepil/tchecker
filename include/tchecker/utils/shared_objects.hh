@@ -22,8 +22,6 @@
 
 namespace tchecker {
   
-  // shared objects
-  
   /*!
    \class make_shared_t
    \brief Functor to create a shared class from a given class. Adds a reference
@@ -68,6 +66,7 @@ namespace tchecker {
      */
     constexpr static refcount_t REFCOUNT_MAX = std::numeric_limits<refcount_t>::max() - RESERVED;
     
+
     static_assert( REFCOUNT_MAX > 0, "REFCOUNT_MAX should be > 0" );
     
     /*!
@@ -165,7 +164,6 @@ namespace tchecker {
       if (*refcount == REFCOUNT_MAX) {  // allocated object with no reference yet
         *refcount = 1;                // first reference to this object
       }else {
-        assert(*refcount < 10000);
         *refcount += 1;
       }
       if (*refcount == REFCOUNT_MAX)  // overflow
@@ -519,6 +517,19 @@ namespace tchecker {
       assert( _t != nullptr );
       return _t;
     }
+    
+    
+    /*!
+     * \brief swap _t for two intrusive shared pointers of the same type
+     * The main interest is to limit the actions on the reference
+     * \note : why are the move constructors deleted? This would make this explicit swap function redundant
+     */
+     void swap(tchecker::intrusive_shared_ptr_t<T> & p){
+      T *temp = _t;
+      _t = p._t;
+      p._t = temp;
+     }
+    
   protected:
     template <class Y> friend class intrusive_shared_ptr_t;
     

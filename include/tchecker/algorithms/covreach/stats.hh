@@ -35,7 +35,7 @@ namespace tchecker {
         _visited_nodes(visited),
         _covered_leaf_nodes(covered_leaves),
         _covered_nonleaf_nodes(covered_nonleaves),
-      _directly_covered_leaf_nodes(direcly_covered)
+        _directly_covered_leaf_nodes(direcly_covered)
       {}
       
       stats_t(const std::vector<tchecker::covreach::stats_t> & stats_vec){
@@ -124,7 +124,7 @@ namespace tchecker {
        */
       void increment_directly_covered_leaf_nodes();
       
-    private:
+    protected:
       unsigned long _visited_nodes;          /*!< Number of visited nodes */
       unsigned long _covered_leaf_nodes;     /*!< Number of covered leaf nodes */
       unsigned long _covered_nonleaf_nodes;  /*!< Number of covered non-leaf nodes */

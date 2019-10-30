@@ -14,7 +14,8 @@ endif()
 tck_check_cxx_flags("-ferror-limit=150" ERROR_LIMIT)
 tck_check_cxx_flags("-fstrict-vtable-pointers" STRICT_VTABLE_POINTERS)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g ${ERROR_LIMIT}")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O2 -flto ${STRICT_VTABLE_POINTERS}")
+#set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O2 -flto ${STRICT_VTABLE_POINTERS}") // schlepil todo make it work with lto
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O2 ${STRICT_VTABLE_POINTERS}")
 
 get_target_property(TCHECKER_INCLUDE_DIR libtchecker_static INCLUDE_DIRECTORIES)
 

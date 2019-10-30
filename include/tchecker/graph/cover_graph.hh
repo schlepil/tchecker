@@ -415,10 +415,14 @@ namespace tchecker {
         }
 
         /*!
-         * Avoiding pushing and pulling of objects
+         * \brief Avoids pushing and pulling of nodes
+         * \param n : node (stored in graph or not)
+         * \param : covering_node
+         * \pre node n is active
+         * \post covering_node holds a reference to a node in the graph that covers the given node n
          */
          bool is_covered_external(NODE_PTR const & n, NODE_PTR & covering_node) const{
-           //This is a bit of a hack.
+           // This is a bit of a hack.
            // Ensure that this is the same as the key used in add_node!
           auto const & container = _nodes[get_node_position(n)];
           for (NODE_PTR const & node : container)
@@ -429,6 +433,23 @@ namespace tchecker {
 
           covering_node = nullptr;
           return false;
+         }
+         
+         /*!
+          * \brief Convenience function to check containers
+          * \param container_nbr
+          * \return true if all nodes are active, else a runtime_error is thrown
+          */
+         bool check_container(node_position_t container_nbr) const {
+           assert(0<=container_nbr);
+           assert(container_nbr<_nodes.size());
+           auto const & container = _nodes[container_nbr];
+           for (NODE_PTR const & node : container){
+             if(!node->is_active()){
+               throw std::runtime_error("inactive node");
+             }
+           }
+           return true;
          }
 
         
@@ -503,11 +524,27 @@ namespace tchecker {
         inline bool is_le(NODE_PTR const & node1, NODE_PTR const & node2) const{
           return _le_node(node1, node2);
         }
+  
+        /*!
+         * \brief Accessor: Allows to determine the container of a given node
+         * \param n : a node, can but does not have to be, stored in the graph
+         * \return the number of the associated container or the NOT_A_POSITION token
+         */
+        node_position_t position_in_table(NODE_PTR const & n) const {
+          return n->position_in_table();
+        }
         
       protected:
+        /*!
+         * \brief Acccessor:Allows to compute the number of the container the
+         * node would be stored in if added to the graph. Allows to increasse performance
+         * @param n : a valid node
+         * @return position of the associated container
+         */
         inline node_position_t get_node_position(NODE_PTR const & n) const {
           return _node_to_key(n) % _nodes.size();
         }
+
         tchecker::graph::cover::node_to_key_t<KEY, NODE_PTR> _node_to_key;  /*!< a node-to-key map */
         tchecker::graph::cover::node_binary_predicate_t<NODE_PTR> _le_node; /*!< less-or-equal relation on node pointers */
         nodes_map_t _nodes;                                                 /*!< map : key -> nodes with that key */

@@ -320,8 +320,8 @@ namespace tchecker {
       assert(dbm != nullptr);
       assert(dim >= 1);
       assert(tchecker::dbm::is_consistent(dbm, dim));
-      assert(0<=x<dim);
-      assert(0<=y<dim);
+      assert(0<=x && x<dim);
+      assert(0<=y && y<dim);
       assert(x!=y);
   
       tchecker::dbm::db_t &M = (x>y) ? DBM(x,y) : DBM(y,x);

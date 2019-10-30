@@ -116,6 +116,32 @@ namespace tchecker {
     {
       return _stack.top();
     }
+  
+    /*!
+     * \brief Swap to limit interactions with reference counter
+     * \param t : "swapable" element ( intrusive_shared )
+     * \pre t holds some value
+     * \post t is inserted into the stack, t holds now a "nullptr"
+     * \note redundant with move-construction, but move is deleted
+     */
+    void swap_insert(T & t){
+      //Create a new one (if T is intrusive<make_shared> this will be with a nullptr) and swap
+      _stack.emplace();
+      t.swap(_stack.top());
+    }
+  
+    /*!
+     * \brief Swap to limit interactions with reference counter
+     * \param t : "swapable" element ( intrusive_shared )
+     * \pre t holds some value (usually a "nullptr")
+     * \post the top value of the stack is swaped into t, the value held by t is discarded
+     * \note redundant with move-construction, but move is deleted
+     */
+    void swap_first_and_remove(T & t){
+      t.swap(_stack.top());
+      remove_first();
+    }
+    
   private:
     std::stack<T> _stack;  /*!< Stack of waiting elements */
   };
@@ -174,6 +200,24 @@ namespace tchecker {
     {
       return _queue.front();
     }
+  
+    /*!
+     * Swap to limit interactions with reference counter
+     */
+    void swap_insert(T & t){
+      //Create a new one (if T is intrusive<make_shared> this will be with a nullptr) and swap
+      _queue.emplace();
+      t.swap(_queue.back());
+    }
+    
+    /*!
+     * Swap to limit interactions with reference counter
+     */
+    void swap_first_and_remove(T & t){
+      t.swap(_queue.back());
+      remove_first();
+    }
+    
   private:
     std::queue<T> _queue;  /*!< Queue of waiting elements */
   };
@@ -265,8 +309,12 @@ namespace tchecker {
     void remove_first()
     {
       //skip_bad();
-      assert(_filter(W::first())); // When this is called all bad should have already been removed;
-      assert(! empty());
+      //assert(_filter(W::first())); // When this is called all bad should have already been removed;
+      //When threading, another thread might have found a node covering this one
+      if (!_filter(W::first())){
+        std::cout << "Node has gone inactive" << std::endl;
+      }
+      assert(!empty());
       W::remove_first();
     }
     
@@ -281,6 +329,12 @@ namespace tchecker {
       assert(! empty());
       return W::first();
     }
+    
+    //swap the first element into the given to by-pass the changement of intrusive
+//    void swap_first(element_t &e){
+//      W::swap_first(e);
+//    }
+    
   private:
     /*!
      \brief Remove the bad elements in front of the waiting container

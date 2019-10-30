@@ -616,6 +616,15 @@ namespace tchecker {
       }
       
       /*!
+       * \brief Utility function to check if all nodes in a given container are indeed active
+       * @param container_number
+       * @return true if all nodes are active, otherwise a runtime error is thrown
+       */
+      bool check_container(tchecker::graph::cover::node_position_t container_number)const {
+        return tchecker::graph::cover::graph_t<node_ptr_t, key_t>::check_container(container_number);
+      }
+      
+      /*!
        \brief Accessor
        \param n : a node
        \param ins : a node inserter
@@ -715,17 +724,30 @@ namespace tchecker {
       }
       
       /*!
-       * Allowing to compare non-inserted nodes
+       * \brief Allows to compare non-inserted nodes; Compares two given nodes
+       * \param node1 : a node
+       * \param node2 : a node
+       * \return true if node2 covers node1 with respect to the given covering
+       * \note this can improve performance as it avoids pushing and poping nodes
        */
       inline bool is_le(node_ptr_t const & node1, node_ptr_t const & node2) const{
         return tchecker::graph::cover::graph_t<node_ptr_t, key_t>::is_le(node1, node2);
       }
-
+      
     protected:
       using node_position_t = tchecker::graph::cover::node_position_t;
       
       inline node_position_t get_node_position(node_ptr_t const & n){
         return tchecker::graph::cover::graph_t<node_ptr_t, key_t>::get_node_position(n);
+      }
+      
+      /*!
+       * \brief Accessors: Allows to determine the container of a given node
+       * \param n : a node, can but does not have to be, stored in the graph
+       * \return the number of the associated container or the NOT_A_POSITION token
+       */
+      node_position_t position_in_table(node_ptr_t const & n) const {
+        return tchecker::graph::cover::graph_t<node_ptr_t, key_t>::position_in_table(n);
       }
       
     private:
