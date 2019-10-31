@@ -2,14 +2,25 @@
 #
 # See files AUTHORS and LICENSE for copyright details.
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/TestUtils.cmake)
+
+set(TCHECKER "$<TARGET_FILE:tchecker>")
+
+set(TEST_DRIVER "${CMAKE_CURRENT_SOURCE_DIR}/test-driver.sh")
+set(SAVE_RESULTS "${CMAKE_CURRENT_SOURCE_DIR}/save-results.sh")
+set(TCK_EXAMPLES_DIR "${CMAKE_SOURCE_DIR}/examples")
+
+#
+# Common setup for all compiled tests
+#
 find_package(Boost REQUIRED)
-find_package(Catch2 REQUIRED)
+find_package(Catch2 QUIET)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
-if(${CMAKE_HOST_SYSTEM_NAME} MATCHES "Linux")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-endif()
+if (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Linux")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+endif ()
 
 tck_check_cxx_flags("-ferror-limit=150" ERROR_LIMIT)
 tck_check_cxx_flags("-fstrict-vtable-pointers" STRICT_VTABLE_POINTERS)
@@ -19,38 +30,43 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O2 ${STRICT_VT
 
 get_target_property(TCHECKER_INCLUDE_DIR libtchecker_static INCLUDE_DIRECTORIES)
 
-set(TCHECKER_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-
+set(TCHECKER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 include_directories(${TCHECKER_INCLUDE_DIR})
-include_directories(${TCHECKER_TEST_DIR})
 
 
-set(TEST_SRC
-${CMAKE_CURRENT_SOURCE_DIR}/test-db.hh
-${CMAKE_CURRENT_SOURCE_DIR}/test-dbm.hh
-${CMAKE_CURRENT_SOURCE_DIR}/test-guard_weak_sync.hh
-${CMAKE_CURRENT_SOURCE_DIR}/test-offset_dbm.hh
-${CMAKE_CURRENT_SOURCE_DIR}/utils.hh
-${CMAKE_CURRENT_SOURCE_DIR}/unittest.cc
-${CMAKE_CURRENT_SOURCE_DIR}/utils.cc)
+add_subdirectory(testutils)
 
-add_executable(unittest ${TEST_SRC})
-target_link_libraries(unittest libtchecker_static)
-target_link_libraries(unittest Catch2::Catch2)
+get_target_property(TESTUTILS_DIR testutils SOURCE_DIR)
+include_directories(${TESTUTILS_DIR})
 
-set_property(TARGET unittest PROPERTY CXX_STANDARD 17)
-set_property(TARGET unittest PROPERTY CXX_STANDARD_REQUIRED ON)
+build_command(BUILD_TCHECKER_COMMAND
+              CONFIGURATION "$<CONFIG>"
+              TARGET tchecker)
 
-foreach(FILE ${TEST_SRC})
-    # Get the directory of the source file
-    get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
-    # Remove common directory prefix to make the group
-    string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "/" GROUP "${PARENT_DIR}")
-    # Make sure we are using windows slashes
-    string(REPLACE "/" "\\" GROUP "${GROUP}")
-    # Put into group
-    source_group("${GROUP}" FILES "${FILE}")
+add_test(NAME build-tchecker
+         COMMAND ${CMAKE_COMMAND}
+         --build "${CMAKE_BINARY_DIR}"
+         --config "$<CONFIG>"
+         --target tchecker
+         )
+
+set_tests_properties(build-tchecker PROPERTIES FIXTURES_SETUP BUILD_TCHECKER)
+
+
+set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "Testing")
+
+set(save_commands "")
+foreach(dir unit-tests bugfixes simple-nr covreach explore)
+    add_subdirectory(${dir})
+    if(TARGET save-${dir})
+        list(APPEND save_commands
+             COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR}/${dir} --target save-${dir} --config "$<CONFIG>")
+    endif()
+    set_property(DIRECTORY ${dir}
+                 APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "Testing")
 endforeach()
 
-include(Catch)
-catch_discover_tests(unittest)
+add_custom_target(save
+                  ${save_commands}
+                  COMMENT "Recursive 'save' target"
+                  )

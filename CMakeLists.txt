@@ -5,15 +5,17 @@
 cmake_minimum_required(VERSION 2.8)
 project(tchecker LANGUAGES CXX)
 
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckCompilerFlags.cmake")
+set(TCK_CMAKE_SCRIPT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${TCK_CMAKE_SCRIPT_DIR}")
 
+include(CheckCompilerFlags)
+include(TcheckerUtils)
 
 # The project version number.
 set(VERSION_MAJOR   0   CACHE STRING "Project major version number.")
 set(VERSION_MINOR   2   CACHE STRING "Project minor version number.")
 mark_as_advanced(VERSION_MAJOR VERSION_MINOR)
 
-add_subdirectory(include)
 add_subdirectory(src)
 
 enable_testing()
