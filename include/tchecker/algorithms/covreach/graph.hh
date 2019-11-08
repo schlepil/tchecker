@@ -360,6 +360,15 @@ namespace tchecker {
      \param TS_ALLOCATOR : type of allocator of transition system (see tchecker::ts::allocator_t), should be garbage collected,
      should allocates nodes
      */
+#ifdef TCHECKER_EXT_MODE
+    template <class KEY, class TS, class TS_ALLOCATOR>
+    class graph_t
+    : public tchecker::covreach::details::graph_types_t<TS>,
+    protected tchecker::graph::cover::graph_t<typename tchecker::covreach::details::graph_types_t<TS>::node_ptr_t, KEY>,
+    protected tchecker::graph::directed::graph_t
+    <typename tchecker::covreach::details::graph_types_t<TS>::node_ptr_t,
+    typename tchecker::covreach::details::graph_types_t<TS>::edge_ptr_t>
+#else
     template <class KEY, class TS, class TS_ALLOCATOR>
     class graph_t
     : public tchecker::covreach::details::graph_types_t<TS>,
@@ -367,6 +376,7 @@ namespace tchecker {
     private tchecker::graph::directed::graph_t
     <typename tchecker::covreach::details::graph_types_t<TS>::node_ptr_t,
     typename tchecker::covreach::details::graph_types_t<TS>::edge_ptr_t>
+#endif
     {
     public:
       /*!
@@ -584,6 +594,8 @@ namespace tchecker {
        \param edge_type : a type of edge
        \post all incoming edges of node n1 have been moved into incoming edges of node n2
        and their type has been changed to edge_type
+       \note This function is only allowed to modify the reference counter of node n1 and node n2
+             In particular the reference counter of the edges has to stay untouched
        */
       void move_incoming_edges(node_ptr_t const & n1,
                                node_ptr_t const & n2,
@@ -749,8 +761,12 @@ namespace tchecker {
       node_position_t position_in_table(node_ptr_t const & n) const {
         return tchecker::graph::cover::graph_t<node_ptr_t, key_t>::position_in_table(n);
       }
-      
+
+#ifdef TCHECKER_EXT_MODE
+    protected:
+#else
     private:
+#endif
       /*!
        \brief Connection predicate
        \param n : a node

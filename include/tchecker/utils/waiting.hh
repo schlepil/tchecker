@@ -94,7 +94,8 @@ namespace tchecker {
      */
     inline void insert(T const & t)
     {
-      _stack.push(t);
+//      _stack.push(t);
+      _stack.push_back(t);
     }
     
     /*!
@@ -104,7 +105,8 @@ namespace tchecker {
      */
     inline void remove_first()
     {
-      _stack.pop();
+//      _stack.pop();
+      _stack.pop_back();
     }
     
     /*!
@@ -114,7 +116,8 @@ namespace tchecker {
      */
     inline T const & first() const
     {
-      return _stack.top();
+//      return _stack.top();
+      return _stack.back();
     }
   
     /*!
@@ -126,8 +129,10 @@ namespace tchecker {
      */
     void swap_insert(T & t){
       //Create a new one (if T is intrusive<make_shared> this will be with a nullptr) and swap
-      _stack.emplace();
-      t.swap(_stack.top());
+//      _stack.emplace();
+      _stack.emplace_back();
+//      t.swap(_stack.top());
+      t.swap(_stack.back());
     }
   
     /*!
@@ -138,12 +143,26 @@ namespace tchecker {
      * \note redundant with move-construction, but move is deleted
      */
     void swap_first_and_remove(T & t){
-      t.swap(_stack.top());
+//      t.swap(_stack.top());
+      t.swap(_stack.back());
       remove_first();
+    }
+  
+    /*!
+     * Check if any is null
+     */
+    bool check_for_no_null(){
+      for (T const & it : _stack){
+        if(it == T{nullptr}){
+          return false;
+        };
+      }
+      return true;
     }
     
   private:
-    std::stack<T> _stack;  /*!< Stack of waiting elements */
+//    std::stack<T> _stack;  /*!< Stack of waiting elements */
+    std::deque<T> _stack;  /*!< Stack of waiting elements */
   };
   
   
@@ -178,7 +197,8 @@ namespace tchecker {
      */
     inline void insert(T const & t)
     {
-      _queue.push(t);
+//      _queue.push(t);
+      _queue.push_back(t);
     }
     
     /*!
@@ -188,7 +208,8 @@ namespace tchecker {
      */
     inline void remove_first()
     {
-      _queue.pop();
+//      _queue.pop();
+      _queue.pop_front();
     }
     
     /*!
@@ -206,7 +227,8 @@ namespace tchecker {
      */
     void swap_insert(T & t){
       //Create a new one (if T is intrusive<make_shared> this will be with a nullptr) and swap
-      _queue.emplace();
+//      _queue.emplace();
+      _queue.emplace_back();
       t.swap(_queue.back());
     }
     
@@ -214,12 +236,26 @@ namespace tchecker {
      * Swap to limit interactions with reference counter
      */
     void swap_first_and_remove(T & t){
-      t.swap(_queue.back());
+//      t.swap(_queue.back());
+      t.swap(_queue.front());
       remove_first();
     }
     
+    /*!
+     * Check if any is null
+     */
+    bool check_for_no_null(){
+      for (T const &it : _queue){
+        if(it == T{nullptr}){
+          return false;
+        };
+      }
+      return true;
+    }
+    
   private:
-    std::queue<T> _queue;  /*!< Queue of waiting elements */
+//    std::queue<T> _queue;  /*!< Queue of waiting elements */
+    std::deque<T> _queue;  /*!< Queue of waiting elements */
   };
   
   

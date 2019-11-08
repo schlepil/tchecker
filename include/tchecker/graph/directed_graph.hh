@@ -8,6 +8,9 @@
 #ifndef TCHECKER_DIRECTED_GRAPH_HH
 #define TCHECKER_DIRECTED_GRAPH_HH
 
+// schlepil
+#define TCHECKER_EXT_MODE
+
 #include "tchecker/utils/iterator.hh"
 
 /*!
@@ -361,8 +364,53 @@ namespace tchecker {
           add_edge<struct tchecker::graph::directed::details::incoming>(tgt, edge);
           add_edge<struct tchecker::graph::directed::details::outgoing>(src, edge);
         }
+
+#ifdef TCHECKER_EXT_MODE
+        /*!
+         \brief Providing the provate accessors to the node list
+                Otherwise it is impossible to circumvent the reference counter
+         */
+         inline EDGE_PTR & get_incoming_head(NODE_PTR const & n){
+           return n->template head<struct tchecker::graph::directed::details::incoming>();
+         }
+  
+        inline EDGE_PTR & get_outgoing_head(NODE_PTR const & n){
+          return n->template head<struct tchecker::graph::directed::details::outgoing>();
+        }
+  
+        inline EDGE_PTR & get_next_incoming_edge(EDGE_PTR const & e){
+          return e->template next<struct tchecker::graph::directed::details::incoming>();
+        }
+  
+        inline EDGE_PTR & get_next_outgoing_edge(EDGE_PTR const & e){
+          return e->template next<struct tchecker::graph::directed::details::outgoing>();
+        }
         
+        inline NODE_PTR & get_incoming_node(EDGE_PTR const & e){
+          return e->template node<struct tchecker::graph::directed::details::incoming>();
+         }
+  
+        inline NODE_PTR & get_outgoing_node(EDGE_PTR const & e){
+          return e->template node<struct tchecker::graph::directed::details::outgoing>();
+        }
+
+        /*!
+         \brief Add an edge with minimal interference to reference counter
+                Only the counter of src, tgt and edge will be modified at any given moment
+         \param src : source node
+         \param tgt : target node
+         \param edge : and edge
+         \pre edge does not belong to a graph yet
+         \post edge has source node src and target node tgt. edge is an outgoing edge of src and an incoming edge of tgt
+         */
+        void add_edge_swap(NODE_PTR const & src, NODE_PTR const & tgt, EDGE_PTR const & edge)
+        {
+          add_edge_swap<struct tchecker::graph::directed::details::incoming>(tgt, edge);
+          add_edge_swap<struct tchecker::graph::directed::details::outgoing>(src, edge);
+        }
         
+#endif
+
         /*!
          \brief Remove an edge
          \param e : an edge
@@ -372,6 +420,17 @@ namespace tchecker {
         {
           remove_edge<struct tchecker::graph::directed::details::incoming>(e);
           remove_edge<struct tchecker::graph::directed::details::outgoing>(e);
+        }
+  
+        /*!
+         \brief Remove an edge without modifying
+         \param e : an edge
+         \post e has been removed from the graph
+         */
+        void remove_edge(EDGE_PTR const & e, NODE_PTR & n_in,  NODE_PTR & n_out)
+        {
+          remove_edge<struct tchecker::graph::directed::details::incoming>(e, n_in);
+          remove_edge<struct tchecker::graph::directed::details::outgoing>(e, n_out);
         }
         
         
@@ -500,6 +559,34 @@ namespace tchecker {
           n->template head<TAG>() = e;
           e->template node<TAG>() = n;
         }
+
+#ifdef TCHECKER_EXT_MODE
+        /*!
+         \brief Add edge at the beginning of the list but using sawp
+                This ensures that only the reference counter of the edge to be added
+                and the node referred to will be changed
+         \tparam TAG : list tag (identifier)
+         \param n : node
+         \param e : edge
+         \pre e does not belong to another list with identifier TAG (checked by assertion)
+         \post e has been added to the list of edges in node n with identifier TAG
+         \note e is added at the head of the list of identifier TAG in node n
+         \note constant-time complexity
+         \note this is thread safe if the edge e and the node n are locked
+         */
+        template <class TAG>
+        void add_edge_swap(NODE_PTR const & n, EDGE_PTR const & e)
+        {
+          assert(e->template next<TAG>() == EDGE_PTR{nullptr});
+          assert(e->template node<TAG>() == NODE_PTR{nullptr});
+  
+          e->template next<TAG>().swap(n->template head<TAG>()); // Prepend list
+          
+          // Changes counter
+          e->template node<TAG>() = n; // Set link to node
+          n->template head<TAG>() = e; // Erase null_ptr with this edge
+        }
+#endif
         
         
         /*!
@@ -551,3 +638,93 @@ namespace tchecker {
 } // end of namespace tchecker
 
 #endif // TCHECKER_DIRECTED_GRAPH_HH
+
+
+/*!
+ \brief Remove an edge from an identifier without interfering with ANY reference counters
+        This means it does not even modify the counter of the one to delete
+        It has to be treated separately to ensure gc
+ \tparam TAG : list tag (identifier)
+ \param e : an edge
+ \pre e belongs to the list of edges with identifier TAG of its node with identifier TAG (checked by assertion)
+      n is a reference to null
+ \post edge e has been removed from the list of edges with identifier TAG in its node with identifier TAG
+       n holds the corresponding node of e
+ \note linear-time complexity in the size of the list of edges
+ */
+//template <class TAG>
+//void remove_edge(EDGE_PTR const & e, NODE_PTR & n)
+//{
+//  assert(n.ptr() == nullptr);
+//
+//  n.swap(e->template node<TAG>()); //This clears the reference to node from e
+//
+//  EDGE_PTR end_ptr = EDGE_PTR{nullptr};
+//  EDGE_PTR & current_edge = n->template head<TAG>();
+//  EDGE_PTR & previous_edge = n->template head<TAG>();
+//
+//  assert(current_edge != end_ptr); //e is not in list
+//
+//  while(current_edge != end_ptr) {
+//    if (current_edge == e) {
+//      // remove edge
+//      // If the first edge is to be removed, then previous_edge is node->head()
+//      current_edge->template next<TAG>().swap(previous_edge->template next<TAG>());
+//      // The edge to delete now wraps back to itself
+//      return;
+//    }
+//    previous_edge = current_edge;
+//    current_edge = current_edge->template next<TAG>();
+//  }
+//  assert(false);  // e is not in the list of edges with identifier TAG from node n
+//}
+
+//template <class TAG>
+//void add_edge_swap(NODE_PTR const & n, EDGE_PTR const & e)
+//{
+//  assert(e->template next<TAG>() == EDGE_PTR{nullptr});
+//  assert(e->template node<TAG>() == NODE_PTR{nullptr});
+//
+//  EDGE_PTR & last_edge = n->template head<TAG>();
+//  EDGE_PTR end_ptr = EDGE_PTR{nullptr};
+//
+//  e->template node<TAG>() = n; // Set link to node
+//
+//  // Search last edge if necessary
+//  if (last_edge == end_ptr) {
+//    last_edge = e;
+//  }else{
+//    while (last_edge->template next<TAG>() != end_ptr) {
+//      last_edge = last_edge->template next<TAG>();
+//    }
+//    // Append this edge after last edge
+//    last_edge->template next<TAG>() = e;
+//  }
+//}
+
+
+///*!
+// \brief Add an incoming edge
+// \param src : source node
+// \param tgt : target node
+// \param edge : and edge
+// \pre (incoming version of the) edge does not belong to a graph yet
+// \post edge has source node src and target node tgt. edge is an outgoing edge of src and an incoming edge of tgt
+// */
+//void add_incoming_edge(NODE_PTR const & src, NODE_PTR const & tgt, EDGE_PTR const & edge)
+//{
+//  add_edge<struct tchecker::graph::directed::details::incoming>(tgt, edge);
+//}
+//
+///*!
+// \brief Add an edge
+// \param src : source node
+// \param tgt : target node
+// \param edge : and edge
+// \pre (outgoing version of the) edge does not belong to a graph yet
+// \post edge has source node src and target node tgt. edge is an outgoing edge of src and an incoming edge of tgt
+// */
+//void add_outgoing_edge(NODE_PTR const & src, NODE_PTR const & tgt, EDGE_PTR const & edge)
+//{
+//  add_edge<struct tchecker::graph::directed::details::outgoing>(src, edge);
+//}

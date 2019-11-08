@@ -142,14 +142,14 @@ namespace tchecker {
      */
 //    todo can this be done more efficiently
 //    todo how can all the other functions be constexpr?!
-    inline size_t size() const
-    {
-      size_t nbr = 0;
-      for (const I & it = _begin; it!=_end; ++it){
-        nbr++;
-      }
-      return nbr;
-    }
+//    inline size_t size() const
+//    {
+//      size_t nbr = 0;
+//      for (I it = _begin; it!=_end; ++it){
+//        nbr++;
+//      }
+//      return nbr;
+//    }
     
     
     

@@ -8,6 +8,8 @@
 #ifndef TCHECKER_POOL_HH
 #define TCHECKER_POOL_HH
 
+#define TCHECKER_EXT_MODE
+
 #include "tchecker/utils/gc.hh"
 #include "tchecker/utils/shared_objects.hh"
 #include "tchecker/utils/spinlock.hh"
@@ -375,7 +377,7 @@ namespace tchecker {
         _free_head_lock.unlock();
         return chunk;
       }
-      //_free_head_lock.unlock();
+      //_free_head_lock.unlock(); //schlepil not thread safe with multiple builders
       
       // Allocate a new block if no chunk available
       if (_raw_head == _raw_end) {

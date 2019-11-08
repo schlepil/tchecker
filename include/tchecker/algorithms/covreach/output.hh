@@ -129,6 +129,7 @@ namespace tchecker {
         
         os.flush();
         
+        std::cout << "There are " << passed.size() << " nodes in the passed list of the graph outputter" << std::endl; // schlepil
         passed.clear();
         
         return os;

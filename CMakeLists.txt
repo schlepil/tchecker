@@ -19,4 +19,6 @@ mark_as_advanced(VERSION_MAJOR VERSION_MINOR)
 add_subdirectory(src)
 
 enable_testing()
-add_subdirectory(test)
+if(CREATE_TEST)
+    add_subdirectory(test)
+endif()

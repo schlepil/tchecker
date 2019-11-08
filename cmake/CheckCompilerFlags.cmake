@@ -8,6 +8,9 @@ include(CheckCXXCompilerFlag)
 # 32 is default
 option(USE16 "Use 16bit int" OFF)
 option(USE64 "Use 64bit int" OFF)
+option(CREATE_TEST "Create the test-cases" OFF)
+option(USE_LTO "Use link time optimization for release build" OFF)
+
 
 set(INTEGER_T_SIZE 32)
 if (USE16)
