@@ -17,6 +17,9 @@
 #include "tchecker/clockbounds/vlocbounds.hh"
 #include "tchecker/zone/zone.hh"
 
+#include "tchecker_ext/utils/spinlock.hh"
+#include <vector>
+
 /*!
  \file cover.hh
  \brief Node predicates for covering reachability algorithm
@@ -205,6 +208,12 @@ namespace tchecker {
         {
           _L = tchecker::clockbounds::allocate_map(_local_lu_map.get().clock_number());
           _U = tchecker::clockbounds::allocate_map(_local_lu_map.get().clock_number());
+          
+          //create the vector as fixed size
+          for (int i=0; i<32; i++){
+            _map_list.emplace_back(std::make_tuple())
+          }
+          
         }
         
         /*!
@@ -279,6 +288,11 @@ namespace tchecker {
          */
         bool operator() (NODE_PTR const & n1, NODE_PTR const & n2)
         {
+          // TODO currently only a fixed maximal number of
+          // threads is allowed
+          // Instead of using _L, _U search for a free
+          
+          
           tchecker::clockbounds::vloc_bounds(_local_lu_map.get(), n2->vloc(), *_L, *_U);
           return n1->zone().alu_le(n2->zone(), *_L, *_U);
         }
@@ -286,6 +300,10 @@ namespace tchecker {
         std::reference_wrapper<tchecker::clockbounds::local_lu_map_t const> _local_lu_map; /*!< Local LU clockbounds map */
         tchecker::clockbounds::map_t * _L;                                                 /*!< L clock bounds map */
         tchecker::clockbounds::map_t * _U;                                                 /*!< U clock bounds map */
+        //Hack
+        std::vector<std::tuple<tchecker_ext::spinlock_t,
+            tchecker::clockbounds::map_t *, tchecker::clockbounds::map_t *>> _map_list;    /*!< L and U actually used when threading */
+        
       };
       
       
