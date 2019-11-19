@@ -17,8 +17,13 @@
 #include "tchecker/clockbounds/vlocbounds.hh"
 #include "tchecker/zone/zone.hh"
 
+#define TCHECKER_EXT_MODE
+
+#ifdef TCHECKER_EXT_MODE
 #include "tchecker_ext/utils/spinlock.hh"
-#include <vector>
+#include <list>
+#endif
+
 
 /*!
  \file cover.hh
@@ -134,7 +139,7 @@ namespace tchecker {
          */
         template <class MODEL>
         explicit cover_zone_alu_global_t(MODEL const & model)
-        : _L(model.global_lu_map().L()), _U(model.global_lu_map().U())
+            : _L(model.global_lu_map().L()), _U(model.global_lu_map().U())
         {}
         
         /*!
@@ -179,9 +184,43 @@ namespace tchecker {
         std::reference_wrapper<tchecker::clockbounds::map_t const> _L;  /*!< global L clock bounds map */
         std::reference_wrapper<tchecker::clockbounds::map_t const> _U;  /*!< global U clock bounds map */
       };
-      
-      
-      
+
+#ifdef TCHECKER_EXT_MODE
+      /*!
+       * \brief Structure holding LU-maps and a lock that
+       * facilitates threading.
+       * It will automatically generate at most as many maps
+       * as there are threads
+       */
+      struct locked_LU_map{
+        locked_LU_map(){
+          _lock.unlock();
+          _L = nullptr;
+          _U = nullptr;
+        }
+        
+        locked_LU_map(const tchecker::clockbounds::map_t &L, const tchecker::clockbounds::map_t &U){
+          _lock.unlock();
+          _L = tchecker::clockbounds::clone_map(L);
+          _U = tchecker::clockbounds::clone_map(U);
+        }
+        
+        locked_LU_map(tchecker::clock_id_t n_clocks){
+          _lock.unlock();
+          _L = tchecker::clockbounds::allocate_map(n_clocks);
+          _U = tchecker::clockbounds::allocate_map(n_clocks);
+        }
+        
+        ~locked_LU_map(){
+          tchecker::clockbounds::deallocate_map(_L);
+          tchecker::clockbounds::deallocate_map(_U);
+        }
+        
+        tchecker::clockbounds::map_t *_L;
+        tchecker::clockbounds::map_t *_U;
+        tchecker_ext::spinlock_t _lock;
+      };
+#endif
       
       /*!
        \class cover_zone_alu_local_t
@@ -201,39 +240,45 @@ namespace tchecker {
          \param model : clock bounds model
          \tparam MODEL : type of model, should inherit from tchecker::clockbounds::model_t
          \note this keeps a reference on model.local_lu_map()
+         \note Move constructors are not thread-safe! Only operator() is.
          */
         template <class MODEL>
         explicit cover_zone_alu_local_t(MODEL const & model)
-        : _local_lu_map(model.local_lu_map())
+            : _local_lu_map(model.local_lu_map())
         {
           _L = tchecker::clockbounds::allocate_map(_local_lu_map.get().clock_number());
           _U = tchecker::clockbounds::allocate_map(_local_lu_map.get().clock_number());
-          
-          //create the vector as fixed size
-          for (int i=0; i<32; i++){
-            _map_list.emplace_back(std::make_tuple())
-          }
-          
+#ifdef TCHECKER_EXT_MODE
+          _list_lock.unlock();
+          // The LU map list will be recreated if necessary
+#endif
         }
         
         /*!
          \brief Copy constructor
          */
         cover_zone_alu_local_t(tchecker::covreach::details::cover_zone_alu_local_t<NODE_PTR> const & c)
-        : _local_lu_map(c._local_lu_map)
+            : _local_lu_map(c._local_lu_map)
         {
           _L = tchecker::clockbounds::clone_map(*c._L);
           _U = tchecker::clockbounds::clone_map(*c._U);
+#ifdef TCHECKER_EXT_MODE
+          _list_lock.unlock();
+          // The LU map list will be recreated if necessary
+#endif
         }
         
         /*!
          \brief Move constructor
          */
         cover_zone_alu_local_t(tchecker::covreach::details::cover_zone_alu_local_t<NODE_PTR> && c)
-        : _local_lu_map(std::move(c._local_lu_map)), _L(c._L), _U(c._U)
+            : _local_lu_map(std::move(c._local_lu_map)), _L(c._L), _U(c._U)
         {
           c._L = nullptr;
           c._U = nullptr;
+#ifdef TCHECKER_EXT_MODE
+          _LU_map_list = std::move(c._LU_map_list);
+#endif
         }
         
         /*!
@@ -243,6 +288,7 @@ namespace tchecker {
         {
           tchecker::clockbounds::deallocate_map(_L);
           tchecker::clockbounds::deallocate_map(_U);
+          // Nothing to do for LU map list
         }
         
         /*!
@@ -275,6 +321,9 @@ namespace tchecker {
             delete _U;
             _U = c._U;
             c._U = nullptr;
+#ifdef TCHECKER_EXT_MODE
+            _LU_map_list = std::move(c._LU_map_list);
+#endif
           }
           return *this;
         }
@@ -288,22 +337,46 @@ namespace tchecker {
          */
         bool operator() (NODE_PTR const & n1, NODE_PTR const & n2)
         {
-          // TODO currently only a fixed maximal number of
-          // threads is allowed
-          // Instead of using _L, _U search for a free
-          
-          
+#ifndef TCHECKER_EXT_MODE
+          // Base mode
           tchecker::clockbounds::vloc_bounds(_local_lu_map.get(), n2->vloc(), *_L, *_U);
           return n1->zone().alu_le(n2->zone(), *_L, *_U);
+#else
+          // Threading
+          // Check if a free LU map exists -> if so use it
+          // If not create a new.
+          // This way we end up with at most as many maps
+          // as threads
+          bool is_le_;
+          for (auto & a_LU_map : _LU_map_list){
+            if (a_LU_map._lock.lock_once()){
+              // Found an unlocked map
+              tchecker::clockbounds::vloc_bounds(_local_lu_map.get(), n2->vloc(), *(a_LU_map._L), *(a_LU_map._U));
+              is_le_ = n1->zone().alu_le(n2->zone(), *(a_LU_map._L), *(a_LU_map._U));
+              // Done
+              a_LU_map._lock.unlock();
+              return is_le_;
+            }
+          }
+          // If we arrive here, no free map was found -> Create one
+          _list_lock.lock();
+          // Emplace_back for list does not invalidate other references
+          // and keeps the above code thread safe
+          _LU_map_list.emplace_back(_local_lu_map.get().clock_number());
+          _list_lock.unlock();
+          // Recursive call with enlarged list
+          return this->operator()(n1,n2);
+#endif
         }
+      
       private:
         std::reference_wrapper<tchecker::clockbounds::local_lu_map_t const> _local_lu_map; /*!< Local LU clockbounds map */
         tchecker::clockbounds::map_t * _L;                                                 /*!< L clock bounds map */
         tchecker::clockbounds::map_t * _U;                                                 /*!< U clock bounds map */
-        //Hack
-        std::vector<std::tuple<tchecker_ext::spinlock_t,
-            tchecker::clockbounds::map_t *, tchecker::clockbounds::map_t *>> _map_list;    /*!< L and U actually used when threading */
-        
+#ifdef TCHECKER_EXT_MODE
+        tchecker_ext::spinlock_t _list_lock;
+        std::list<locked_LU_map> _LU_map_list;
+#endif
       };
       
       
@@ -330,7 +403,7 @@ namespace tchecker {
          */
         template <class MODEL>
         explicit cover_zone_am_global_t(MODEL const & model)
-        : _M(model.global_m_map().M())
+            : _M(model.global_m_map().M())
         {}
         
         /*!
@@ -399,7 +472,7 @@ namespace tchecker {
          */
         template <class MODEL>
         explicit cover_zone_am_local_t(MODEL const & model)
-        : _local_m_map(model.local_m_map())
+            : _local_m_map(model.local_m_map())
         {
           _M = tchecker::clockbounds::allocate_map(_local_m_map.get().clock_number());
         }
@@ -408,7 +481,7 @@ namespace tchecker {
          \brief Copy constructor
          */
         cover_zone_am_local_t(tchecker::covreach::details::cover_zone_am_local_t<NODE_PTR> const & c)
-        : _local_m_map(c._local_m_map)
+            : _local_m_map(c._local_m_map)
         {
           _M = tchecker::clockbounds::clone_map(*c._M);
         }
@@ -417,7 +490,7 @@ namespace tchecker {
          \brief Move constructor
          */
         cover_zone_am_local_t(tchecker::covreach::details::cover_zone_am_local_t<NODE_PTR> && c)
-        : _local_m_map(std::move(c._local_m_map)), _M(c._M)
+            : _local_m_map(std::move(c._local_m_map)), _M(c._M)
         {
           c._M = nullptr;
         }
@@ -567,8 +640,8 @@ namespace tchecker {
          */
         template <class ... SP_ARGS, class ... ZP_ARGS>
         cover_node_t(std::tuple<SP_ARGS...> && sp_args, std::tuple<ZP_ARGS...> && zp_args)
-        : STATE_PREDICATE(std::make_from_tuple<STATE_PREDICATE>(sp_args)),
-        ZONE_PREDICATE(std::make_from_tuple<ZONE_PREDICATE>(zp_args))
+            : STATE_PREDICATE(std::make_from_tuple<STATE_PREDICATE>(sp_args)),
+              ZONE_PREDICATE(std::make_from_tuple<ZONE_PREDICATE>(zp_args))
         {}
         
         /*!
@@ -626,7 +699,7 @@ namespace tchecker {
     template <class NODE_PTR, class STATE_PREDICATE>
     using cover_inclusion_t
     = tchecker::covreach::details::cover_node_t
-    <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_zone_inclusion_t<NODE_PTR>>;
+        <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_zone_inclusion_t<NODE_PTR>>;
     
     
     /*!
@@ -637,7 +710,7 @@ namespace tchecker {
     template <class NODE_PTR, class STATE_PREDICATE>
     using cover_alu_global_t
     = tchecker::covreach::details::cover_node_t
-    <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_zone_alu_global_t<NODE_PTR>>;
+        <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_zone_alu_global_t<NODE_PTR>>;
     
     
     /*!
@@ -648,7 +721,7 @@ namespace tchecker {
     template <class NODE_PTR, class STATE_PREDICATE>
     using cover_alu_local_t
     = tchecker::covreach::details::cover_node_t
-    <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_zone_alu_local_t<NODE_PTR>>;
+        <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_zone_alu_local_t<NODE_PTR>>;
     
     
     /*!
@@ -659,7 +732,7 @@ namespace tchecker {
     template <class NODE_PTR, class STATE_PREDICATE>
     using cover_am_global_t
     = tchecker::covreach::details::cover_node_t
-    <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_zone_am_global_t<NODE_PTR>>;
+        <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_zone_am_global_t<NODE_PTR>>;
     
     
     /*!
@@ -670,7 +743,7 @@ namespace tchecker {
     template <class NODE_PTR, class STATE_PREDICATE>
     using cover_am_local_t
     = tchecker::covreach::details::cover_node_t
-    <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_zone_am_local_t<NODE_PTR>>;
+        <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_zone_am_local_t<NODE_PTR>>;
     
     
     /*!
@@ -681,7 +754,7 @@ namespace tchecker {
     template <class NODE_PTR, class STATE_PREDICATE>
     using cover_sync_inclusion_t
     = tchecker::covreach::details::cover_node_t
-    <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_sync_zone_inclusion_t<NODE_PTR>>;
+        <NODE_PTR, STATE_PREDICATE, tchecker::covreach::details::cover_sync_zone_inclusion_t<NODE_PTR>>;
     
   } // end of namespace covreach
   
