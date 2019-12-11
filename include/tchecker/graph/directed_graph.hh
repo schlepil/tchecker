@@ -367,7 +367,7 @@ namespace tchecker {
 
 #ifdef TCHECKER_EXT_MODE
         /*!
-         \brief Providing the provate accessors to the node list
+         \brief Providing the private accessors to the node list
                 Otherwise it is impossible to circumvent the reference counter
          */
          inline EDGE_PTR & get_incoming_head(NODE_PTR const & n){
@@ -384,14 +384,6 @@ namespace tchecker {
   
         inline EDGE_PTR & get_next_outgoing_edge(EDGE_PTR const & e){
           return e->template next<struct tchecker::graph::directed::details::outgoing>();
-        }
-        
-        inline NODE_PTR & get_incoming_node(EDGE_PTR const & e){
-          return e->template node<struct tchecker::graph::directed::details::incoming>();
-         }
-  
-        inline NODE_PTR & get_outgoing_node(EDGE_PTR const & e){
-          return e->template node<struct tchecker::graph::directed::details::outgoing>();
         }
 
         /*!
@@ -514,6 +506,16 @@ namespace tchecker {
         {
           return edge->template node<struct tchecker::graph::directed::details::outgoing>();
         }
+  
+        /*!
+         \brief Accessor
+         \param edge : an edge
+         \return the source node of edge
+         */
+        inline NODE_PTR & edge_src_nc(EDGE_PTR const & edge)
+        {
+          return edge->template node<struct tchecker::graph::directed::details::outgoing>();
+        }
         
         /*!
          \brief Accessor
@@ -524,6 +526,17 @@ namespace tchecker {
         {
           return edge->template node<struct tchecker::graph::directed::details::incoming>();
         }
+  
+        /*!
+         \brief Accessor
+         \param edge : an edge
+         \return the target node of edge
+         */
+        inline NODE_PTR & edge_tgt_nc(EDGE_PTR const & edge)
+        {
+          return edge->template node<struct tchecker::graph::directed::details::incoming>();
+        }
+        
       protected:
         /*!
          \brief Accessor
@@ -580,7 +593,8 @@ namespace tchecker {
           assert(e->template next<TAG>() == EDGE_PTR{nullptr});
           assert(e->template node<TAG>() == NODE_PTR{nullptr});
   
-          e->template next<TAG>().swap(n->template head<TAG>()); // Prepend list
+          // Prepend list; Do not change counter of already existing edges
+          e->template next<TAG>().swap(n->template head<TAG>());
           
           // Changes counter
           e->template node<TAG>() = n; // Set link to node

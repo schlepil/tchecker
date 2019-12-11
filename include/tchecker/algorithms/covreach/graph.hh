@@ -454,7 +454,12 @@ namespace tchecker {
       _edge_allocator(block_size, tchecker::allocation_size_t<edge_t>::alloc_size())
       {
         _ts_allocator.enroll(gc);
-        _edge_allocator.enroll(gc);
+        // todo
+        // Quick and dirty. This has to be manually maintained coherent with
+        // with whether or not add_edge_swap checks for existing edges
+        if (false){
+          _edge_allocator.enroll(gc);
+        }
       }
       
       /*!

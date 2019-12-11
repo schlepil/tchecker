@@ -17,7 +17,7 @@
 #include "tchecker/clockbounds/vlocbounds.hh"
 #include "tchecker/zone/zone.hh"
 
-#define TCHECKER_EXT_MODE
+#define TCHECKER_EXT_MODE //todo push this into cmake
 
 #ifdef TCHECKER_EXT_MODE
 #include "tchecker_ext/utils/spinlock.hh"
@@ -447,9 +447,40 @@ namespace tchecker {
       private:
         std::reference_wrapper<tchecker::clockbounds::map_t const> _M;  /*!< global M clock bounds map */
       };
+
+
+
+#ifdef TCHECKER_EXT_MODE
+      /*!
+       * \brief Structure holding a local M-map and a lock that
+       * facilitates threading.
+       * It will automatically generate at most as many maps
+       * as there are threads
+       */
+      struct locked_M_map{
+        locked_M_map(){
+          _lock.unlock();
+          _M = nullptr;
+        }
       
+        locked_M_map(const tchecker::clockbounds::map_t &M){
+          _lock.unlock();
+          _M = tchecker::clockbounds::clone_map(M);
+        }
       
+        locked_M_map(tchecker::clock_id_t n_clocks){
+          _lock.unlock();
+          _M = tchecker::clockbounds::allocate_map(n_clocks);
+        }
       
+        ~locked_M_map(){
+          tchecker::clockbounds::deallocate_map(_M);
+        }
+      
+        tchecker::clockbounds::map_t *_M;
+        tchecker_ext::spinlock_t _lock;
+      };
+#endif
       
       /*!
        \class cover_zone_am_local_t
@@ -475,6 +506,10 @@ namespace tchecker {
             : _local_m_map(model.local_m_map())
         {
           _M = tchecker::clockbounds::allocate_map(_local_m_map.get().clock_number());
+#ifdef TCHECKER_EXT_MODE
+          _list_lock.unlock();
+          // The M map list will be recreated if necessary
+#endif
         }
         
         /*!
@@ -484,6 +519,10 @@ namespace tchecker {
             : _local_m_map(c._local_m_map)
         {
           _M = tchecker::clockbounds::clone_map(*c._M);
+#ifdef TCHECKER_EXT_MODE
+          _list_lock.unlock();
+          // The M map list will be recreated if necessary
+#endif
         }
         
         /*!
@@ -493,6 +532,9 @@ namespace tchecker {
             : _local_m_map(std::move(c._local_m_map)), _M(c._M)
         {
           c._M = nullptr;
+#ifdef TCHECKER_EXT_MODE
+          _M_map_list = std::move(c._M_map_list);
+#endif
         }
         
         /*!
@@ -501,6 +543,7 @@ namespace tchecker {
         ~cover_zone_am_local_t()
         {
           tchecker::clockbounds::deallocate_map(_M);
+          // Nothing to do for LU map list
         }
         
         /*!
@@ -528,6 +571,9 @@ namespace tchecker {
             delete _M;
             _M = c._M;
             c._M = nullptr;
+#ifdef TCHECKER_EXT_MODE
+            _M_map_list = std::move(c._M_map_list);
+#endif
           }
           return *this;
         }
@@ -541,12 +587,44 @@ namespace tchecker {
          */
         bool operator() (NODE_PTR const & n1, NODE_PTR const & n2)
         {
+#ifndef TCHECKER_EXT_MODE
+          // Base mode
           tchecker::clockbounds::vloc_bounds(_local_m_map.get(), n2->vloc(), *_M);
           return n1->zone().am_le(n2->zone(), *_M);
+#else
+          // Threading
+          // Check if a free M map exists -> if so use it
+          // If not create a new.
+          // This way we end up with at most as many maps
+          // as threads
+          bool is_le_;
+          for (auto & a_M_map : _M_map_list){
+            if (a_M_map._lock.lock_once()){
+              // Found an unlocked map
+              tchecker::clockbounds::vloc_bounds(_local_m_map.get(), n2->vloc(), *(a_M_map._M));
+              is_le_ = n1->zone().am_le(n2->zone(), *(a_M_map._M));
+              // Done
+              a_M_map._lock.unlock();
+              return is_le_;
+            }
+          }
+          // If we arrive here, no free map was found -> Create one
+          _list_lock.lock();
+          // Emplace_back for list does not invalidate other references
+          // and keeps the above code thread safe
+          _M_map_list.emplace_back(_local_m_map.get().clock_number());
+          _list_lock.unlock();
+          // Recursive call with enlarged list
+          return this->operator()(n1,n2);
+#endif
         }
       private:
         std::reference_wrapper<tchecker::clockbounds::local_m_map_t const> _local_m_map;  /*!< Local M clockbounds map */
         tchecker::clockbounds::map_t * _M;                                                /*!< M clock bounds map */
+#ifdef TCHECKER_EXT_MODE
+        tchecker_ext::spinlock_t _list_lock;
+        std::list<locked_M_map> _M_map_list;
+#endif
       };
       
       
