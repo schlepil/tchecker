@@ -14,7 +14,10 @@ set(CMAKE_MACOSX_RPATH 1)
 tck_check_cxx_flags("-ferror-limit=150" ERROR_LIMIT)
 tck_check_cxx_flags("-fstrict-vtable-pointers" STRICT_VTABLE_POINTERS)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g3 ${ERROR_LIMIT}")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O2 -flto ${STRICT_VTABLE_POINTERS}")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O2 ${STRICT_VTABLE_POINTERS}")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto")
+endif()
 
 set(TCHECKER_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 set(TCHECKER_BINARY_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/../include")
@@ -109,7 +112,7 @@ set_property(TARGET tck-reach PROPERTY CXX_STANDARD 17)
 set_property(TARGET tck-reach PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # Project view in IDEs (Xcode, etc)
-foreach(FILE ${LIBTCHECKER_SRC}) 
+foreach(FILE ${LIBTCHECKER_SRC})
     # Get the directory of the source file
     get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
     # Remove common directory prefix to make the group
